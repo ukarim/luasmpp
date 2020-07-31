@@ -173,9 +173,9 @@ local function submit_deliver_encode(message_data, command_id, sequence_number)
   local registered_delivery = message_data.registered_delivery or 0x00
   local data_coding = message_data.data_coding or 0x00
   local short_message = message_data.short_message
-  local sm_length = string.len(short_message) + 1 -- plus 1 for null terminator
+  local sm_length = string.len(short_message)
 
-  local tmp_pdu = struct.pack(">IIIIsBBsBBsBBBssBBBBBs",
+  local tmp_pdu = struct.pack(">IIIIsBBsBBsBBBssBBBBBc" .. sm_length,
                               0x00, command_id, 0x00, sequence_number, -- header
                               service_type, source_addr_ton, source_addr_npi, source_addr,
                               dest_addr_ton, dest_addr_npi, destination_addr, esm_class,
@@ -201,7 +201,9 @@ local function submit_deliver_decode(bytes)
   local srv_type, src_ton, src_npi, src_addr, dest_ton, dest_npi, dest_addr = struct.unpack(">sBBsBBs", bytes, 17)
   -- calc next position. len of service_type, src_addr, dest_addr, ton, npi and pdu header
   local next_pos = string.len(srv_type) + string.len(src_addr) + string.len(dest_addr) + 24
-  local esm, _, _, sched, _, deliv, _, coding, _, _, msg = struct.unpack(">BBBssBBBBBs", bytes, next_pos)
+  local esm, _, _, sched, validity, deliv, _, coding, _, sm_len = struct.unpack(">BBBssBBBBB", bytes, next_pos)
+  next_pos = next_pos + string.len(sched) + string.len(validity) + 10
+  local msg = struct.unpack("c" .. sm_len, bytes, next_pos)
   local ret_val = {
     command_id = id,
     command_status = sts,
