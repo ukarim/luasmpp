@@ -17,7 +17,6 @@ SMPP 3.4 implementation in pure Lua.
 
 * Tlv support
 * Time formatter
-* UDH helpers
 * Delivery Receipt formatter, parser
 * Better error handling in decoders
 
