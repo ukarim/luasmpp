@@ -15,7 +15,7 @@ end
 
 -- One pdu header decode is enough
 
-function testDecodeUnbind()
+function test_decode_unbind()
   local bytes = read_file("data/unbind.bin")
   local result = pdu.pdu_header_decode(bytes)
   luaunit.assertEquals(result.command_length, 16)
@@ -25,35 +25,35 @@ function testDecodeUnbind()
 end
 
 
-function testEncodeEnquireLink()
+function test_encode_enquire_link()
   local pdu_bytes = pdu.pdu_header_encode(pdu.ENQUIRE_LINK_CMD, pdu.STATUS_OK, 12)
   local expected = read_file("data/enquire_link.bin")
   luaunit.assertEquals(pdu_bytes, expected)
 end
 
 
-function testEncodeEnquireLinkResp()
+function test_encode_enquire_link_resp()
   local pdu_bytes = pdu.pdu_header_encode(pdu.ENQUIRE_LINK_RESP_CMD, pdu.STATUS_OK, 12)
   local expected = read_file("data/enquire_link_resp.bin")
   luaunit.assertEquals(pdu_bytes, expected)
 end
 
 
-function testEncodeUnbind()
+function test_encode_unbind()
   local pdu_bytes = pdu.pdu_header_encode(pdu.UNBIND_CMD, pdu.STATUS_OK, 12)
   local expected = read_file("data/unbind.bin")
   luaunit.assertEquals(pdu_bytes, expected)
 end
 
 
-function testEncodeUnbindResp()
+function test_encode_unbind_resp()
   local pdu_bytes = pdu.pdu_header_encode(pdu.UNBIND_RESP_CMD, pdu.STATUS_OK, 12)
   local expected = read_file("data/unbind_resp.bin")
   luaunit.assertEquals(pdu_bytes, expected)
 end
 
 
-function testEncodeGenericNack()
+function test_encode_generic_nack()
   local pdu_bytes = pdu.pdu_header_encode(pdu.GENERIC_NACK_CMD, pdu.STATUS_SYS_ERR, 12)
   local expected = read_file("data/generic_nack.bin")
   luaunit.assertEquals(pdu_bytes, expected)
@@ -63,7 +63,7 @@ end
 -- Bind requests
 
 
-function testDecodeBindTransmitter()
+function test_decode_bind_transmitter()
   local bytes = read_file("data/bind_transmitter.bin")
   local bind_transmitter, err = pdu.bind_request_decode(bytes)
   luaunit.assertEquals(bind_transmitter.command_length, 47)
@@ -79,7 +79,7 @@ function testDecodeBindTransmitter()
 end
 
 
-function testEncodeBindTransmitter()
+function test_encode_bind_transmitter()
   local expected = read_file("data/bind_transmitter.bin")
   local bind_data = {
     system_id = "SMPP3TEST",
@@ -95,7 +95,7 @@ end
 
 -- Bind responses
 
-function testDecodeBindReceiverResp()
+function test_decode_bind_receiver_resp()
   local pdu_bytes = read_file("data/bind_receiver_resp.bin")
   local bind_receiver_resp = pdu.bind_response_decode(pdu_bytes)
   luaunit.assertEquals(bind_receiver_resp.command_id, pdu.BIND_RECEIVER_RESP_CMD)
@@ -105,7 +105,7 @@ function testDecodeBindReceiverResp()
 end
 
 
-function testEncodeBindReceiverResp()
+function test_encode_bind_receiver_resp()
   local expected_bytes = read_file("data/bind_receiver_resp.bin")
   local actual = pdu.bind_response_encode(pdu.BIND_RECEIVER_RESP_CMD, pdu.STATUS_OK, "test_receiver", 325)
   luaunit.assertEquals(actual, expected_bytes)
@@ -115,7 +115,7 @@ end
 -- SubmitSmResp
 
 
-function testDecodeSubmitSmResp()
+function test_decode_submit_sm_resp()
   local pdu_bytes = read_file("data/submit_sm_resp.bin")
   local submit_sm_resp = pdu.submit_sm_resp_decode(pdu_bytes)
   luaunit.assertEquals(submit_sm_resp.command_id, pdu.SUBMIT_SM_RESP_CMD)
@@ -125,7 +125,7 @@ function testDecodeSubmitSmResp()
 end
 
 
-function testEncodeSubmitSmResp()
+function test_encode_submit_sm_resp()
   local expected_bytes = read_file("data/submit_sm_resp.bin")
   local actual_bytes = pdu.submit_sm_resp_encode(pdu.STATUS_OK, "576733224354336", 99)
   luaunit.assertEquals(actual_bytes, expected_bytes)
@@ -135,7 +135,7 @@ end
 -- SubmitSm
 
 
-function testDecodeSubmitSm()
+function test_decode_submit_sm()
   local pdu_bytes = read_file("data/submit_sm.bin")
   local submit_sm = pdu.submit_sm_decode(pdu_bytes)
   luaunit.assertEquals(submit_sm.command_id, pdu.SUBMIT_SM_CMD)
@@ -155,7 +155,7 @@ function testDecodeSubmitSm()
 end
 
 
-function testEncodeSubmitSm()
+function test_encode_submit_sm()
   local expected_bytes = read_file("data/submit_sm.bin")
   local message_data = {
     service_type = "TEST_SERVICE",
