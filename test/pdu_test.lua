@@ -65,7 +65,7 @@ end
 
 function test_decode_bind_transmitter()
   local bytes = read_file("data/bind_transmitter.bin")
-  local bind_transmitter, err = pdu.bind_request_decode(bytes)
+  local bind_transmitter, header, err = pdu.bind_request_decode(bytes)
   luaunit.assertEquals(bind_transmitter.command_length, 47)
   luaunit.assertEquals(bind_transmitter.command_id, pdu.BIND_TRANSMITTER_CMD)
   luaunit.assertEquals(bind_transmitter.command_status, pdu.STATUS_OK)
@@ -76,6 +76,15 @@ function test_decode_bind_transmitter()
   luaunit.assertEquals(bind_transmitter.addr_ton, 1)
   luaunit.assertEquals(bind_transmitter.addr_npi, 1)
   luaunit.assertEquals(bind_transmitter.address_range, "")
+end
+
+
+function test_decode_not_bind_req_packet()
+  local bytes = read_file("data/submit_sm.bin")
+  local bind_req, header, err = pdu.bind_request_decode(bytes)
+  luaunit.assertNil(bind_req)
+  luaunit.assertNotNil(header)
+  luaunit.assertEquals(header.command_id, pdu.SUBMIT_SM_CMD)
 end
 
 
@@ -105,6 +114,15 @@ function test_decode_bind_receiver_resp()
 end
 
 
+function test_decode_not_bind_resp_packet()
+  local bytes = read_file("data/enquire_link.bin")
+  local bind_resp, header, err = pdu.bind_response_decode(bytes)
+  luaunit.assertNil(bind_resp)
+  luaunit.assertNotNil(header)
+  luaunit.assertEquals(header.command_id, pdu.ENQUIRE_LINK_CMD)
+end
+
+
 function test_encode_bind_receiver_resp()
   local expected_bytes = read_file("data/bind_receiver_resp.bin")
   local actual = pdu.bind_response_encode(pdu.BIND_RECEIVER_RESP_CMD, pdu.STATUS_OK, "test_receiver", 325)
@@ -122,6 +140,15 @@ function test_decode_submit_sm_resp()
   luaunit.assertEquals(submit_sm_resp.command_status, pdu.STATUS_OK)
   luaunit.assertEquals(submit_sm_resp.sequence_number, 99)
   luaunit.assertEquals(submit_sm_resp.message_id, "576733224354336")
+end
+
+
+function test_decode_not_submit_sm_resp_packet()
+  local bytes = read_file("data/bind_transmitter.bin")
+  local submit_sm, header, err = pdu.submit_sm_resp_decode(bytes)
+  luaunit.assertNil(submit_sm)
+  luaunit.assertNotNil(header)
+  luaunit.assertEquals(header.command_id, pdu.BIND_TRANSMITTER_CMD)
 end
 
 
@@ -152,6 +179,15 @@ function test_decode_submit_sm()
   luaunit.assertEquals(submit_sm.registered_delivery, 1)
   luaunit.assertEquals(submit_sm.data_coding, pdu.CODING_DEF)
   luaunit.assertEquals(submit_sm.short_message, "luasmpp test")
+end
+
+
+function test_decode_not_submit_sm_packet()
+  local bytes = read_file("data/bind_transmitter.bin")
+  local submit_sm, header, err = pdu.submit_sm_decode(bytes)
+  luaunit.assertNil(submit_sm)
+  luaunit.assertNotNil(header)
+  luaunit.assertEquals(header.command_id, pdu.BIND_TRANSMITTER_CMD)
 end
 
 
