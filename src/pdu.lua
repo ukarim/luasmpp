@@ -103,12 +103,23 @@ end
 function pdu.bind_request_decode(bytes)
   local buf_len = string.len(bytes)
   if buf_len < 16 then
-    return nil, "invalid input. not enough bytes"
+    return nil, nil, "invalid input. need at least 16 bytes"
   end
   local len, id, sts, seq = struct.unpack(">IIII", bytes)
   if len ~= buf_len then
-    return nil, "invalid input. not enough bytes"
+    return nil, nil, "invalid input. corrupted packet"
   end
+
+  if id ~= pdu.BIND_TRANSMITTER_CMD and id ~= pdu.BIND_RECEIVER_CMD and id ~= pdu.BIND_TRANSCEIVER_CMD then
+    local pdu_header = {
+      command_length = len,
+      command_id = id,
+      command_status = sts,
+      sequence_num = seq
+    }
+    return nil, pdu_header, nil
+  end
+
   local sys_id, pass, sys_type, ver, ton, npi, range = struct.unpack(">sssBBBs", bytes, 17)
   local ret_val = {
     command_length = len,
@@ -123,7 +134,7 @@ function pdu.bind_request_decode(bytes)
     addr_npi = npi,
     address_range = range
   }
-  return ret_val, nil
+  return ret_val, nil, nil
 end
 
 
@@ -136,12 +147,23 @@ end
 function pdu.bind_response_decode(bytes)
   local buf_len = string.len(bytes)
   if buf_len < 16 then
-    return nil, "invalid input. not enough bytes"
+    return nil, nil, "invalid input. need at least 16 bytes"
   end
   local len, id, sts, seq = struct.unpack(">IIII", bytes)
   if len ~= buf_len then
-    return nil, "invalid input. not enough bytes"
+    return nil, nil, "invalid input. corrupted packet"
   end
+
+  if id ~= pdu.BIND_TRANSMITTER_RESP_CMD and id ~= pdu.BIND_RECEIVER_RESP_CMD and id ~= pdu.BIND_TRANSCEIVER_RESP_CMD then
+    local pdu_header = {
+      command_length = len,
+      command_id = id,
+      command_status = sts,
+      sequence_num = seq
+    }
+    return nil, pdu_header, nil
+  end
+
   local system_id = struct.unpack(">s", bytes, 17)
   local ret_val = {
     command_id = id,
@@ -149,7 +171,7 @@ function pdu.bind_response_decode(bytes)
     sequence_number = seq,
     system_id = system_id
   }
-  return ret_val, nil
+  return ret_val, nil, nil
 end
 
 
@@ -160,7 +182,7 @@ end
 -- Use deliver_sm for deliver reports (see short_message field)
 
 
-local function submit_deliver_encode(message_data, command_id, sequence_number)
+local function submit_deliver_request_encode(message_data, command_id, sequence_number)
   local service_type = message_data.service_type or ""
   local source_addr_ton = message_data.source_addr_ton or 0x00
   local source_addr_npi = message_data.source_addr_npi or 0x00
@@ -186,18 +208,29 @@ local function submit_deliver_encode(message_data, command_id, sequence_number)
 end
 
 
-local function submit_deliver_decode(bytes)
+local function submit_deliver_request_decode(bytes)
   local buf_len = string.len(bytes)
   
   if buf_len < 16 then
-    return nil, "invalid input. not enough bytes"
+    return nil, nil, "invalid input. need at least 16 bytes"
   end
   
   local len, id, sts, seq = struct.unpack(">IIII", bytes)
 
   if buf_len ~= len then
-    return nil, "invalid input. not enough bytes"
+    return nil, nil, "invalid input. corrupted packet"
   end
+
+  if not (id == pdu.SUBMIT_SM_CMD or id == pdu.DELIVER_SM_CMD) then
+    local pdu_header = {
+      command_length = len,
+      command_id = id,
+      command_status = sts,
+      sequence_num = seq
+    }
+    return nil, pdu_header, nil
+  end
+
   local srv_type, src_ton, src_npi, src_addr, dest_ton, dest_npi, dest_addr = struct.unpack(">sBBsBBs", bytes, 17)
   -- calc next position. len of service_type, src_addr, dest_addr, ton, npi and pdu header
   local next_pos = string.len(srv_type) + string.len(src_addr) + string.len(dest_addr) + 24
@@ -221,72 +254,90 @@ local function submit_deliver_decode(bytes)
     data_coding = coding,
     short_message = msg
   }
-  return ret_val, nil
+  return ret_val, nil, nil
 end
 
 
 function pdu.submit_sm_encode(message_data, sequence_number)
-  return submit_deliver_encode(message_data, pdu.SUBMIT_SM_CMD, sequence_number)
+  return submit_deliver_request_encode(message_data, pdu.SUBMIT_SM_CMD, sequence_number)
 end
 
 
 function pdu.submit_sm_decode(bytes)
-  return submit_deliver_decode(bytes)
+  return submit_deliver_request_decode(bytes)
 end
 
 
 function pdu.deliver_sm_encode(message_data, sequence_number)
-  return submit_deliver_encode(message_data, pdu.DELIVER_SM_CMD, sequence_number)
+  return submit_deliver_request_encode(message_data, pdu.DELIVER_SM_CMD, sequence_number)
 end
 
 
 function pdu.deliver_sm_decode(bytes)
-  return submit_deliver_decode(bytes)
+  return submit_deliver_request_decode(bytes)
 end
 
 
 -- SumitSmResp and DeliverSmsResp PDUs
 
 
-local function submit_deliver_encode(command_id, command_status, message_id, sequence_number)
+local function submit_deliver_response_encode(command_id, command_status, message_id, sequence_number)
   local pdu_length = 16 + string.len(message_id) + 1 -- plus 1 for null terminator
   return struct.pack(">IIIIs", pdu_length, command_id, command_status, sequence_number, message_id)
 end
 
 
-local function submit_deliver_decode(bytes)
+local function submit_deliver_response_decode(bytes)
   local buf_len = string.len(bytes)
-  if buf_len < 17 then
-    return nil, "invalid input. not enough bytes"
+  if buf_len < 16 then
+    return nil, nil, "invalid input. need at least 16 bytes"
   end
-  local len, id, sts, seq, mess_id = struct.unpack(">IIIIs", bytes)
+
+  local len, id, sts, seq = struct.unpack(">IIII", bytes)
+
+  if buf_len ~= len then
+     return nil, nil, "invalid input. corrupted packet"
+  end
+
+  if id ~= pdu.SUBMIT_SM_RESP_CMD and id ~= pdu.DELIVER_SM_RESP_CMD then
+    local pdu_header = {
+      command_length = len,
+      command_id = id,
+      command_status = sts,
+      sequence_num = seq
+    }
+    return nil, pdu_header, nil
+  end
+
+  local mess_id = struct.unpack(">s", bytes, 17)
+
   local ret_val = {
     command_id = id,
     command_status = sts,
     sequence_number = seq,
     message_id = mess_id
   }
-  return ret_val, nil
+  return ret_val, nil, nil
 end
 
 
 function pdu.submit_sm_resp_encode(command_status, message_id, sequence_number)
-  return submit_deliver_encode(pdu.SUBMIT_SM_RESP_CMD, command_status, message_id, sequence_number)
+  return submit_deliver_response_encode(pdu.SUBMIT_SM_RESP_CMD, command_status, message_id, sequence_number)
 end
 
 
 function pdu.submit_sm_resp_decode(bytes)
-  return submit_deliver_decode(bytes)
+  return submit_deliver_response_decode(bytes)
 end
 
 
 function pdu.deliver_sm_resp_encode(command_status, message_id, sequence_number)
-  return submit_deliver_encode(pdu.DELIVER_SM_RESP_CMD, command_status, message_id, sequence_number)
+  return submit_deliver_response_encode(pdu.DELIVER_SM_RESP_CMD, command_status, message_id, sequence_number)
 end
 
 
 function pdu.deliver_sm_resp_decode(bytes)
-  return submit_deliver_decode(bytes)
+  return submit_deliver_response_decode(bytes)
 end
 
 
