@@ -3,6 +3,7 @@ package.path = package.path .. ';../src/?.lua;'
 
 local luaunit = require("luaunit")
 local pdu = require("pdu")
+local smpputil = require("smpputil")
 
 
 local function read_file(filename)
@@ -210,6 +211,57 @@ function test_encode_submit_sm()
   luaunit.assertEquals(submit_sm, expected_bytes)
 end
 
+
+-- SubmitSm with TLV
+
+function test_decode_submit_sm_with_tlv()
+  local pdu_bytes = read_file("data/submit_sm_with_tlv.bin")
+  local submit_sm = pdu.submit_sm_decode(pdu_bytes)
+  luaunit.assertEquals(submit_sm.command_id, pdu.SUBMIT_SM_CMD)
+  luaunit.assertEquals(submit_sm.command_status, pdu.STATUS_OK)
+  luaunit.assertEquals(submit_sm.sequence_number, 1234)
+  luaunit.assertEquals(submit_sm.service_type, "TEST_SERVICE")
+  luaunit.assertEquals(submit_sm.source_addr_ton, 5)
+  luaunit.assertEquals(submit_sm.source_addr_npi, 0)
+  luaunit.assertEquals(submit_sm.source_addr, "SomeSender")
+  luaunit.assertEquals(submit_sm.dest_addr_ton, 1)
+  luaunit.assertEquals(submit_sm.dest_addr_npi, 1)
+  luaunit.assertEquals(submit_sm.destination_addr, "77012110000")
+  luaunit.assertEquals(submit_sm.esm_class, 0)
+  luaunit.assertEquals(submit_sm.registered_delivery, 1)
+  luaunit.assertEquals(submit_sm.data_coding, pdu.CODING_DEF)
+  luaunit.assertEquals(submit_sm.short_message, "")
+
+  local tlvs = submit_sm.tlvs
+  luaunit.assertNotNil(tlvs)
+  luaunit.assertEquals(tlvs[pdu.TLV_MSG_PAYLOAD], "Message payload content")
+end
+
+
+function test_encode_submit_sm_with_tlv()
+  local expected_bytes = read_file("data/submit_sm_with_tlv.bin")
+
+  local tlvs = {}
+  tlvs[pdu.TLV_MSG_PAYLOAD] = "Message payload content"
+
+  local message_data = {
+    service_type = "TEST_SERVICE",
+    source_addr_ton = 5,
+    source_addr_npi = 0,
+    source_addr = "SomeSender",
+    dest_addr_ton = 1,
+    dest_addr_npi = 1,
+    destination_addr = "77012110000",
+    esm_class = 0,
+    registered_delivery = 1,
+    data_coding = pdu.CODING_DEF,
+    short_message = nil,
+    tlvs = tlvs
+  }
+
+  local submit_sm = pdu.submit_sm_encode(message_data, 1234)
+  luaunit.assertEquals(submit_sm, expected_bytes)
+end
 
 os.exit(luaunit.LuaUnit.run())
 

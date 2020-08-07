@@ -53,6 +53,18 @@ pdu.CODING_CYRLLIC = 0x06
 pdu.CODING_UCS2 = 0x08
 
 
+-- TVL
+
+pdu.TLV_PAYLOAD_TYPE = 0x0019
+pdu.TLV_RECEIPTED_MSG_ID = 0x001E
+pdu.TLV_USR_MSG_REF = 0x0204
+pdu.TLV_SAR_MSG_REF_NUM = 0x020C
+pdu.TLV_SAR_TOTAL_SEGMENTS = 0x020E
+pdu.TLV_SAR_SEGMENT_SEQ_NUM = 0x020F
+pdu.TLV_MSG_PAYLOAD = 0x0424
+pdu.TLV_MSG_STATE = 0x0427
+
+
 -- Header only PDUs
 
 -- Generic functions to encode and decode next PDUs
@@ -194,8 +206,9 @@ local function submit_deliver_request_encode(message_data, command_id, sequence_
   local schedule_delivery_time = message_data.schedule_delivery_time or ""
   local registered_delivery = message_data.registered_delivery or 0x00
   local data_coding = message_data.data_coding or 0x00
-  local short_message = message_data.short_message
+  local short_message = message_data.short_message or ""
   local sm_length = string.len(short_message)
+  local tlvs = message_data.tlvs
 
   local tmp_pdu = struct.pack(">IIIIsBBsBBsBBBssBBBBBc" .. sm_length,
                               0x00, command_id, 0x00, sequence_number, -- header
@@ -203,6 +216,17 @@ local function submit_deliver_request_encode(message_data, command_id, sequence_
                               dest_addr_ton, dest_addr_npi, destination_addr, esm_class,
                               0x00, 0x00, schedule_delivery_time, "", registered_delivery,
                               0x00, data_coding, 0x00, sm_length, short_message)
+
+  -- append optional params
+  if tlvs ~= nil then
+    local tlvs_buf = {}
+    for k, v in pairs(tlvs) do
+      local l = string.len(v)
+      local tlv = struct.pack(">HHc" .. l, k, l, v)
+      tlvs_buf[#tlvs_buf + 1] = tlv
+    end
+    tmp_pdu = tmp_pdu .. table.concat(tlvs_buf)
+  end
 
   return struct.pack(">I", #tmp_pdu) .. string.sub(tmp_pdu, 5)
 end
@@ -237,6 +261,18 @@ local function submit_deliver_request_decode(bytes)
   local esm, _, _, sched, validity, deliv, _, coding, _, sm_len = struct.unpack(">BBBssBBBBB", bytes, next_pos)
   next_pos = next_pos + string.len(sched) + string.len(validity) + 10
   local msg = struct.unpack("c" .. sm_len, bytes, next_pos)
+
+  next_pos = next_pos + sm_len
+  local tlvs = {}
+
+  while next_pos < buf_len do
+    local tlv_key, tlv_len = struct.unpack(">HH", bytes, next_pos)
+    -- +4 for key and len fields
+    local tlv_val = struct.unpack(">c" .. tlv_len, bytes, next_pos + 4)
+    tlvs[tlv_key] = tlv_val
+    next_pos = next_pos + tlv_len + 4
+  end
+
   local ret_val = {
     command_id = id,
     command_status = sts,
@@ -252,7 +288,8 @@ local function submit_deliver_request_decode(bytes)
     schedule_delivery_time = sched,
     registered_delivery = deliv,
     data_coding = coding,
-    short_message = msg
+    short_message = msg,
+    tlvs = tlvs
   }
   return ret_val, nil, nil
 end

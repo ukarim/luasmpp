@@ -15,7 +15,6 @@ SMPP 3.4 implementation in pure Lua.
 
 ### Todo
 
-* Tlv support
 * Time formatter
 * Delivery Receipt formatter, parser
 * Better error handling in decoders

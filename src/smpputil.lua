@@ -1,4 +1,6 @@
 
+local struct = require("struct")
+
 local smpputil = {}
 
 
@@ -27,6 +29,35 @@ function smpputil.split_udh(long_message, id)
   end
 
   return udh_messages
+end
+
+
+function smpputil.ui8_encode(num)
+  return struct.pack(">B", num)
+end
+
+
+function smpputil.ui8_decode(bytes, pos)
+  return struct.unpack(">B", bytes, pos)
+end
+
+function smpputil.ui16_encode(num)
+  return struct.pack(">H", num)
+end
+
+
+function smpputil.ui16_decode(bytes, pos)
+  return struct.unpack(">H", bytes, pos)
+end
+
+
+function smpputil.ui32_encode(num)
+  return struct.pack(">I", num)
+end
+
+
+function smpputil.ui32_decode(num)
+  return struct.unpack(">I", bytes, pos)
 end
 
 
