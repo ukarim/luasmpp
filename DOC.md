@@ -1,6 +1,6 @@
-### pdu module
+### pdu.lua
 
-Contains various encoder/decoder functions and some of most used SMPP constants
+Contains various encoder/decoder functions and some of the most used SMPP constants
 
 #### pdu_header_encode(command_id, command_status, sequence_number)
 
@@ -121,6 +121,140 @@ elseif pdu_header ~= nil then
   -- check command_id
 else
   print(err)
+end
+```
+
+#### submit_sm_encode(message_data, sequence_number)
+
+Encode `submit_sm` PDU
+
+```lua
+local pdu = require("pdu")
+
+local msg_data = {
+  source_addr = "Test",
+  source_addr_ton = 5,
+  source_addr_npi = 0,
+  destination_addr = "77012110000",
+  dest_addr_ton = 1,
+  dest_addr_npi = 1,
+  short_message = "Test message",
+  registered_delivery = 1
+}
+local submit_sm = pdu,submit_sm_encode(msg_data, 154)
+-- send submit_sm through tcp connection
+```
+
+or using TLV
+
+```lua
+local pdu = require("pdu")
+
+local tlvs = {}
+tlvs[pdu.TLV_MSG_PAYLOAD] = "Realy long sms message ..."
+
+local msg_data = {
+  source_addr = "Test",
+  source_addr_ton = 5,
+  source_addr_npi = 0,
+  destination_addr = "77012110000",
+  dest_addr_ton = 1,
+  dest_addr_npi = 1,
+  short_message = nil,
+  registered_delivery = 1,
+  tlvs = tlvs
+}
+local submit_sm = pdu,submit_sm_encode(msg_data, 154)
+-- send submit_sm through tcp connection
+```
+
+#### submit_sm_decode(bytes)
+
+Decode `submit_sm` PDU
+
+```lua
+local pdu = require("pdu")
+
+local bytes = get_bytes_from_tcp()
+local submit_sm, pdu_header, err = pdu.submit_sm_decode(bytes)
+if submit_sm ~= nil then
+  local sequence_number = submit_sm.sequence_number
+  local source_addr = submit_sm.source_addr
+  -- etc ...
+elseif pdu_header ~= nil then
+  -- it seems that bytes var is not submit_sm
+  local command_id = pdu_header.command_id
+  local sequence_number = pdu_header.sequence_number
+  -- etc ...
+  -- check command_id and use proper decoder function
+else
+  print(err)
+end
+```
+
+---
+
+### smpputil.lua
+
+Helper functions
+
+#### split_udh(long_message, id)
+
+Split long sms message to list of messages with length of 134 bytes and UDH headers applied.
+
+id arg is optional with default value set to 1.
+
+```lua
+local pdu = require("pdu")
+local smpputil = require("smpputil")
+
+local seq_num = 123
+local long_msg = "Multisegment long sms message"
+
+local segments = smpputil.split_udh(long_msg)
+
+for i in 1, #segments do
+  local msg_data = {
+    esm_class = 3,
+    source_addr = "Test",
+    destination_addr = "77012110000",
+    short_message = segments[i]
+  }
+  local submit_sm = pdu.submit_sm_encode(msg_data, seq_num + i)
+  -- send through tcp connection
+end
+
+```
+
+#### uiX_encode(num) / uiX_decode(bytes, pos)
+
+* `ui8_encode(num)` and `ui8_decode(bytes, pos)`
+* `ui16_encode(num)` and `ui16_decode(bytes, pos)`
+* `ui32_encode(num)` and `ui32_decode(bytes, pos)`
+
+Set of functions for encoding and decoding unsigned ints.
+
+Here is example of how to use these functions for TLV value encoding.
+
+```lua
+local pdu = require("pdu")
+local smpputil = require("smpputil")
+
+local tlvs = {}
+tlvs[pdu.TLV_MSG_STATE] = smpputil.ui8_encode(5) -- 5 is for UNDELIVERABLE
+```
+
+and decoding
+
+```lua
+local pdu = require("pdu")
+local smpputil = require("smpputil")
+
+local tlvs = deliver_sm.tvls
+local msg_state_bytes = tlvs[pdu.TLV_MSG_STATE]
+local msg_state = smpputil.ui8_decode(msg_state_bytes)
+if msg_state == 5 then
+  print("message is undeliverable")
 end
 ```
 
