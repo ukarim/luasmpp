@@ -60,6 +60,36 @@ function test_udh_single()
   luaunit.assertEquals(seq_num, 1)
 end
 
-os.exit(luaunit.LuaUnit.run())
 
+function test_ui8_encode_decode()
+  local expected_bytes = string.char("0xA9")
+  luaunit.assertEquals(smpputil.ui8_encode(169), expected_bytes)
+  luaunit.assertEquals(smpputil.ui8_decode(expected_bytes), 169)
+
+  -- check decode with position
+  luaunit.assertEquals(smpputil.ui8_decode("blahblah" .. expected_bytes, 9), 169)
+end
+
+
+function test_ui16_encode_decode()
+  local expected_bytes = string.char("0x26", "0x94")
+  luaunit.assertEquals(smpputil.ui16_encode(9876), expected_bytes)
+  luaunit.assertEquals(smpputil.ui16_decode(expected_bytes), 9876)
+
+  -- check decode with position
+  luaunit.assertEquals(smpputil.ui16_decode("blahblah" .. expected_bytes, 9), 9876)
+end
+
+
+function test_ui32_encode_decode()
+  local expected_bytes = string.char("0x3D", "0x09", "0x6A", "0xA0")
+  luaunit.assertEquals(smpputil.ui32_encode(1024027296), expected_bytes)
+  luaunit.assertEquals(smpputil.ui32_decode(expected_bytes), 1024027296)
+
+  -- check decode with position
+  luaunit.assertEquals(smpputil.ui32_decode("blahblah" .. expected_bytes, 9), 1024027296)
+end
+
+
+os.exit(luaunit.LuaUnit.run())
 

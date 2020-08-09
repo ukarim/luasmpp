@@ -56,7 +56,7 @@ function smpputil.ui32_encode(num)
 end
 
 
-function smpputil.ui32_decode(num)
+function smpputil.ui32_decode(bytes, pos)
   return struct.unpack(">I", bytes, pos)
 end
 
