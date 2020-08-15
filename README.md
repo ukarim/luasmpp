@@ -21,6 +21,6 @@ SMPP 3.4 implementation in pure Lua.
 
 ### Dependencies
 
-* lua-struct (runtime)
-* luaunit (test)
+* lua-struct 0.9.0-1 (runtime)
+* luaunit 3.3-1 (test)
 
