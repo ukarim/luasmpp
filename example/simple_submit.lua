@@ -1,3 +1,6 @@
+-- Send submit_sm and wait for submit_sm_resp
+-- Start dummy_smsc.lua server and try to run this script
+
 -- load modules from src folder
 package.path = package.path .. ';../src/?.lua;'
 

@@ -2,7 +2,7 @@
 
 Contains various encoder/decoder functions and some of the most used SMPP constants
 
-#### pdu_header_encode(command_id, command_status, sequence_number)
+* `pdu_header_encode(command_id, command_status, sequence_number)`
 
 Encode PDU that contains only header part:
 
@@ -17,7 +17,7 @@ local enquire_link = pdu.pdu_header_encode(pdu.ENQUIRE_LINK_CMD, pdu.STATUS_OK, 
 -- send enquire_link through tcp connection
 ```
 
-#### pdu_header_decode(bytes)
+* `pdu_header_decode(bytes)`
 
 Decode header-only PDU
 
@@ -36,7 +36,7 @@ else
 end
 ```
 
-#### bind_request_encode(bind_data, command_id, sequence_number)
+* `bind_request_encode(bind_data, command_id, sequence_number)`
 
 Encode bind request
 
@@ -57,7 +57,7 @@ local bind_transmitter = pdu.bind_request_encode(bind_data, pdu.BIND_TRANSMITTER
 -- send bind_transmitter through tcp connection
 ```
 
-#### bind_request_decode(bytes)
+* `bind_request_decode(bytes)`
 
 Decode bind request
 
@@ -83,7 +83,7 @@ else
 end
 ```
 
-#### bind_response_encode(command_id, command_status, system_id, sequence_number)
+* `bind_response_encode(command_id, command_status, system_id, sequence_number)`
 
 Encode bind response
 
@@ -98,7 +98,7 @@ local bind_transmitter_resp = pdu.bind_response_encode(pdu.BIND_TRANSMITTER_RESP
 -- send bind_transceiver_resp through tcp connection
 ```
 
-#### bind_response_decode(bytes)
+* `bind_response_decode(bytes)`
 
 Decode bind response
 
@@ -124,7 +124,7 @@ else
 end
 ```
 
-#### submit_sm_encode(message_data, sequence_number)
+* `submit_sm_encode(message_data, sequence_number)`
 
 Encode `submit_sm` PDU
 
@@ -141,7 +141,7 @@ local msg_data = {
   short_message = "Test message",
   registered_delivery = 1
 }
-local submit_sm = pdu,submit_sm_encode(msg_data, 154)
+local submit_sm = pdu.submit_sm_encode(msg_data, 154)
 -- send submit_sm through tcp connection
 ```
 
@@ -168,7 +168,7 @@ local submit_sm = pdu,submit_sm_encode(msg_data, 154)
 -- send submit_sm through tcp connection
 ```
 
-#### submit_sm_decode(bytes)
+* `submit_sm_decode(bytes)`
 
 Decode `submit_sm` PDU
 
@@ -192,13 +192,49 @@ else
 end
 ```
 
+* `submit_sm_resp_encode(command_status, message_id, sequence_number)`
+
+Encode `submit_sm_resp` PDU
+
+```lua
+local pdu = require("pdu")
+
+local submit_sm_resp = pdu.submit_sm_resp_encode(pdu.STATUS_OK, "162478643328", 234)
+-- send submit_sm_resp through tcp connection
+```
+
+* `submit_sm_resp_decode(bytes)`
+
+Decode `submit_sm_resp` PDU
+
+```lua
+local pdu = require("pdu")
+
+local bytes = get_bytes_from_tcp()
+local submit_sm_resp, pdu_header, err = pdu.submit_sm_resp_decode(bytes)
+if submit_sm_resp ~= nil then
+  local seq_num = submit_sm_resp.sequence_number
+  local cmd_status = submit_sm_resp.command_status
+  local message_id = submit_sm_resp.message_id
+  -- use these variables somehow
+elseif pdu_header ~= nil then
+  -- bytes passed to wrong function. this is not submit_sm_resp
+  local seq_num = pdu_header.sequence_number
+  local cmd_status = pdu_header.command_status
+  local cmd_id = pdu_header.command_id
+  -- look at the cmd_id
+else
+  print(err)
+end
+```
+
 ---
 
 ### smpputil.lua
 
 Helper functions
 
-#### split_udh(long_message, id)
+* `split_udh(long_message, id)`
 
 Split long sms message to list of messages with length of 134 bytes and UDH headers applied.
 
@@ -226,7 +262,7 @@ end
 
 ```
 
-#### uiX_encode(num) / uiX_decode(bytes, pos)
+* `uiX_encode(num) and uiX_decode(bytes, pos)`
 
 * `ui8_encode(num)` and `ui8_decode(bytes, pos)`
 * `ui16_encode(num)` and `ui16_decode(bytes, pos)`
