@@ -25,6 +25,9 @@ pdu.SUBMIT_SM_CMD = 0x04
 pdu.SUBMIT_SM_RESP_CMD = 0x80000004
 pdu.DELIVER_SM_CMD = 0x05
 pdu.DELIVER_SM_RESP_CMD = 0x80000005
+pdu.DATA_SM_CMD = 0x00000103
+pdu.DATA_SM_RESP_CMD = 0x80000103
+
 
 -- Command status
 
@@ -375,6 +378,160 @@ end
 
 function pdu.deliver_sm_resp_decode(bytes)
   return submit_deliver_response_decode(bytes)
+end
+
+
+function pdu.data_sm_encode(message_data, sequence_number)
+  local service_type = message_data.service_type or "";
+  local source_addr_ton = message_data.source_addr_ton or 0x00
+  local source_addr_npi = message_data.source_addr_npi or 0x00
+  local source_addr = message_data.source_addr
+  local dest_addr_ton = message_data.dest_addr_ton or 0x00
+  local dest_addr_npi = message_data.dest_addr_npi or 0x00
+  local destination_addr = message_data.destination_addr
+  local esm_class = message_data.esm_class or 0x00
+  local registered_delivery = message_data.registered_delivery or 0x00
+  local data_coding = message_data.data_coding or 0x00
+  local tlvs = message_data.tlvs
+
+  local tmp_pdu = struct.pack(">IIIIsBBsBBsBBB", 0x00, pdu.DATA_SM_CMD, 0x00, sequence_number,
+                              service_type, source_addr_ton, source_addr_npi, source_addr, dest_addr_ton, dest_addr_npi,
+                              destination_addr, esm_class, registered_delivery, data_coding)
+  -- append optional params
+  if tlvs ~= nil then
+    local tlvs_buf = {}
+    for k, v in pairs(tlvs) do
+      local l = string.len(v)
+      local tlv = struct.pack(">HHc" .. l, k, l, v)
+      tlvs_buf[#tlvs_buf + 1] = tlv
+    end
+    tmp_pdu = tmp_pdu .. table.concat(tlvs_buf)
+  end
+
+  return struct.pack(">I", #tmp_pdu) .. string.sub(tmp_pdu, 5)
+end
+
+
+function pdu.data_sm_decode(bytes)
+  local buf_len = string.len(bytes)
+  if buf_len < 16 then
+    return nil, nil, "invalid input. need at least 16 bytes"
+  end
+
+  local len, id, sts, seq = struct.unpack(">IIII", bytes)
+
+  if buf_len ~= len then
+     return nil, nil, "invalid input. corrupted packet"
+  end
+
+  if id ~= pdu.DATA_SM_CMD then
+    local pdu_header = {
+      command_length = len,
+      command_id = id,
+      command_status = sts,
+      sequence_num = seq
+    }
+    return nil, pdu_header, nil
+  end
+
+  local srv_type, src_ton, src_npi, src_addr, dest_ton, dest_npi, dest_addr, esm_class, deliv, coding = struct.unpack(">sBBsBBsBBB", bytes, 17)
+  local tlv_idx = string.len(srv_type) + string.len(src_addr) + string.len(dest_addr) + 27
+
+  local tlvs = {}
+
+  while tlv_idx < buf_len do
+    local tlv_key, tlv_len = struct.unpack(">HH", bytes, tlv_idx)
+    -- +4 for key and len fields
+    local tlv_val = struct.unpack(">c" .. tlv_len, bytes, tlv_idx + 4)
+    tlvs[tlv_key] = tlv_val
+    tlv_idx = tlv_idx + tlv_len + 4
+  end
+
+  local ret_val = {
+    command_id = id,
+    command_status = sts,
+    sequence_number = seq,
+    service_type = srv_type,
+    source_addr_ton = src_ton,
+    source_addr_npi = src_npi,
+    source_addr = src_addr,
+    dest_addr_ton = dest_ton,
+    dest_addr_npi = dest_npi,
+    destination_addr = dest_addr,
+    esm_class = esm_class,
+    registered_delivery = deliv,
+    data_coding = coding,
+    tlvs = tlvs
+  }
+  return ret_val, nil, nil
+end
+
+
+function pdu.data_sm_resp_encode(message_data, command_status, sequence_number)
+  local message_id = message_data.message_id or ""
+  local tlvs = message_data.tlvs
+
+  local tmp_pdu = struct.pack(">IIIIs", 0x00, pdu.DATA_SM_RESP_CMD, command_status, sequence_number, message_id)
+
+  -- append optional params
+  if tlvs ~= nil then
+    local tlvs_buf = {}
+    for k, v in pairs(tlvs) do
+      local l = string.len(v)
+      local tlv = struct.pack(">HHc" .. l, k, l, v)
+      tlvs_buf[#tlvs_buf + 1] = tlv
+    end
+    tmp_pdu = tmp_pdu .. table.concat(tlvs_buf)
+  end
+
+  return struct.pack(">I", #tmp_pdu) .. string.sub(tmp_pdu, 5)
+end
+
+
+function pdu.data_sm_resp_decode(bytes)
+  local buf_len = string.len(bytes)
+  if buf_len < 16 then
+    return nil, nil, "invalid input. need at least 16 bytes"
+  end
+
+  local len, id, sts, seq = struct.unpack(">IIII", bytes)
+
+  if buf_len ~= len then
+     return nil, nil, "invalid input. corrupted packet"
+  end
+
+  if id ~= pdu.DATA_SM_RESP_CMD then
+    local pdu_header = {
+      command_length = len,
+      command_id = id,
+      command_status = sts,
+      sequence_num = seq
+    }
+    return nil, pdu_header, nil
+  end
+
+  local message_id = struct.unpack(">s", bytes, 17)
+  local tlv_idx = string.len(message_id) + 18
+
+  local tlvs = {}
+
+  while tlv_idx < buf_len do
+    local tlv_key, tlv_len = struct.unpack(">HH", bytes, tlv_idx)
+    -- +4 for key and len fields
+    local tlv_val = struct.unpack(">c" .. tlv_len, bytes, tlv_idx + 4)
+    tlvs[tlv_key] = tlv_val
+    tlv_idx = tlv_idx + tlv_len + 4
+  end
+
+  local ret_val = {
+    command_id = id,
+    command_status = sts,
+    sequence_number = seq,
+    message_id = message_id,
+    tlvs = tlvs
+  }
+  return ret_val, nil, nil
+
 end
 
 

@@ -228,6 +228,22 @@ else
 end
 ```
 
+* `data_sm_encode(message_data, sequence_number)`
+
+Encode `data_sm` PDU
+
+* `data_sm_decode(bytes)`
+
+Decode `data_sm` PDU
+
+* `data_sm_resp_encode(message_data, command_status, sequence_number)`
+
+Encode `data_sm_resp` PDU
+
+* `data_sm_resp_decode(bytes)`
+
+Decode `data_sm_resp` PDU
+
 ---
 
 ### smpputil.lua

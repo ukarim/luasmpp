@@ -12,6 +12,7 @@ SMPP 3.4 implementation in pure Lua.
 * `deliver_sm` and `deliver_sm_resp`
 * `enquire_link` and `enquire_link_resp`
 * `generic_nack`
+* `data_sm` and `data_sm_resp`
 
 ### Todo
 

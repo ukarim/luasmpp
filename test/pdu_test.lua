@@ -263,5 +263,83 @@ function test_encode_submit_sm_with_tlv()
   luaunit.assertEquals(submit_sm, expected_bytes)
 end
 
+
+-- Data SM
+
+function test_encode_data_sm()
+  local expected_bytes = read_file("data/data_sm.bin")
+  local tlvs = {}
+  tlvs[pdu.TLV_MSG_PAYLOAD] = "Can it wait for a bit? I'm in the middle of some calibrations"
+  local message_data = {
+    service_type = "Garrus",
+    source_addr_ton = 1,
+    source_addr_npi = 1,
+    source_addr = "77012110000",
+    dest_addr_ton = 5,
+    dest_addr_npi = 1,
+    destination_addr = "Test",
+    registered_delivery = 1,
+    tlvs = tlvs
+  }
+  local data_sm = pdu.data_sm_encode(message_data, 754)
+  luaunit.assertEquals(data_sm, expected_bytes)
+end
+
+
+function test_decode_data_sm()
+  local pdu_bytes = read_file("data/data_sm.bin")
+  local data_sm = pdu.data_sm_decode(pdu_bytes)
+  luaunit.assertEquals(data_sm.command_id, pdu.DATA_SM_CMD)
+  luaunit.assertEquals(data_sm.command_status, pdu.STATUS_OK)
+  luaunit.assertEquals(data_sm.sequence_number, 754)
+  luaunit.assertEquals(data_sm.service_type, "Garrus")
+  luaunit.assertEquals(data_sm.source_addr_ton, 1)
+  luaunit.assertEquals(data_sm.source_addr_npi, 1)
+  luaunit.assertEquals(data_sm.source_addr, "77012110000")
+  luaunit.assertEquals(data_sm.dest_addr_ton, 5)
+  luaunit.assertEquals(data_sm.dest_addr_npi, 1)
+  luaunit.assertEquals(data_sm.destination_addr, "Test")
+  luaunit.assertEquals(data_sm.esm_class, 0)
+  luaunit.assertEquals(data_sm.registered_delivery, 1)
+  luaunit.assertEquals(data_sm.data_coding, pdu.CODING_DEF)
+
+  local tlvs = data_sm.tlvs
+  luaunit.assertNotNil(tlvs)
+  luaunit.assertEquals(tlvs[pdu.TLV_MSG_PAYLOAD], "Can it wait for a bit? I'm in the middle of some calibrations")
+end
+
+
+function test_encode_data_sm_resp()
+  local expected_bytes = read_file("data/data_sm_resp.bin")
+
+  local tlvs = {}
+  tlvs[0x001D] = "oops some error" -- additional_status_info_text
+
+  local message_data = {
+    message_id = "21324342",
+    tlvs = tlvs
+  }
+
+  local data_sm_resp = pdu.data_sm_resp_encode(message_data, pdu.STATUS_SYS_ERR, 124)
+
+  luaunit.assertEquals(data_sm_resp, expected_bytes)
+end
+
+
+function test_decode_data_sm_resp()
+  local pdu_bytes = read_file("data/data_sm_resp.bin")
+  local data_sm_resp = pdu.data_sm_resp_decode(pdu_bytes)
+  luaunit.assertEquals(data_sm_resp.command_id, pdu.DATA_SM_RESP_CMD)
+  luaunit.assertEquals(data_sm_resp.command_status, pdu.STATUS_SYS_ERR)
+  luaunit.assertEquals(data_sm_resp.sequence_number, 124)
+  luaunit.assertEquals(data_sm_resp.message_id, "21324342")
+
+  local tlvs = data_sm_resp.tlvs
+  luaunit.assertNotNil(tlvs)
+  luaunit.assertEquals(tlvs[0x001D], "oops some error")
+  luaunit.assertEquals(data_sm_resp.command_status, pdu.STATUS_SYS_ERR)
+end
+
+
 os.exit(luaunit.LuaUnit.run())
 
